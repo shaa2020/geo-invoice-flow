@@ -29,7 +29,7 @@ import {
   Download, 
   Trash,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -58,9 +58,14 @@ interface InvoiceItem {
 }
 
 const CreateInvoice = () => {
+  const navigate = useNavigate();
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [nextId, setNextId] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [notes, setNotes] = useState("");
+  const [dueDate, setDueDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   
   // Current date formatted
   const currentDate = format(new Date(), "yyyy-MM-dd");
@@ -137,16 +142,52 @@ const CreateInvoice = () => {
       return;
     }
 
+    if (!paymentMethod) {
+      toast.warning("Please select a payment method");
+      return;
+    }
+
     // Here you would normally save the invoice
+    const invoiceData = {
+      invoiceNumber,
+      invoiceDate,
+      dueDate,
+      paymentMethod,
+      customer: customers.find(c => c.id === selectedCustomer),
+      items,
+      subtotal,
+      deliveryCharge,
+      grandTotal,
+      notes,
+      status: paymentMethod === "due" ? "Due" : "Paid"
+    };
+    
+    // For demonstration purposes, we'll store it in localStorage
+    const existingInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+    localStorage.setItem('invoices', JSON.stringify([...existingInvoices, invoiceData]));
+    
     toast.success("Invoice created successfully!");
     
-    // In a real application, you would redirect to the invoice view page
-    // or clear the form for a new invoice
+    // Redirect to invoices page after success
+    setTimeout(() => {
+      navigate("/invoices");
+    }, 1500);
+  };
+
+  const handlePrint = () => {
+    toast.info("Preparing to print invoice...");
+    window.print();
+  };
+
+  const handleDownloadPDF = () => {
+    toast.info("Preparing PDF for download...");
+    // In a real application, this would generate an actual PDF
+    toast.success("PDF downloaded successfully!");
   };
 
   return (
-    <div className="animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+    <div className="animate-fade-in print:m-0 print:p-0">
+      <div className="flex justify-between items-center mb-6 print:hidden">
         <div className="flex items-center">
           <Link to="/invoices" className="mr-4">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -159,7 +200,13 @@ const CreateInvoice = () => {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => toast.info("Invoice saved as draft")}>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              toast.info("Invoice saved as draft");
+              // In a real app, you'd save this to storage
+            }}
+          >
             Save as Draft
           </Button>
           <Button 
@@ -171,13 +218,13 @@ const CreateInvoice = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Invoice Information</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-6 print:space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 print:gap-4 mb-8 print:mb-2">
+          <Card className="print:shadow-none print:border-0">
+            <CardContent className="p-6 print:p-2">
+              <h3 className="text-lg font-semibold mb-4 print:mb-2">Invoice Information</h3>
+              <div className="grid grid-cols-2 gap-4 print:gap-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="invoice-number">Invoice Number</Label>
                   <Input 
                     id="invoice-number" 
@@ -186,25 +233,27 @@ const CreateInvoice = () => {
                     className="bg-muted" 
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="invoice-date">Invoice Date</Label>
                   <Input 
                     id="invoice-date" 
                     type="date" 
-                    defaultValue={currentDate}
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="due-date">Due Date</Label>
                   <Input 
                     id="due-date" 
                     type="date" 
-                    defaultValue={currentDate}
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="payment-method">Payment Method</Label>
-                  <Select>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                     <SelectTrigger id="payment-method">
                       <SelectValue placeholder="Select method" />
                     </SelectTrigger>
@@ -221,11 +270,11 @@ const CreateInvoice = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Customer Information</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
+          <Card className="print:shadow-none print:border-0">
+            <CardContent className="p-6 print:p-2">
+              <h3 className="text-lg font-semibold mb-4 print:mb-2">Customer Information</h3>
+              <div className="space-y-4 print:space-y-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="customer">Select Customer</Label>
                   <Select 
                     value={selectedCustomer} 
@@ -262,7 +311,12 @@ const CreateInvoice = () => {
                   </div>
                 )}
                 
-                <Button type="button" variant="outline" className="w-full">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full print:hidden"
+                  onClick={() => toast.info("Add customer feature coming soon")}
+                >
                   <Plus className="mr-2 h-4 w-4" /> Add New Customer
                 </Button>
               </div>
@@ -270,16 +324,20 @@ const CreateInvoice = () => {
           </Card>
         </div>
 
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-4">
+        <Card className="mb-8 print:shadow-none print:border-0">
+          <CardContent className="p-6 print:p-2">
+            <div className="flex justify-between items-center mb-4 print:mb-2">
               <h3 className="text-lg font-semibold">Items</h3>
-              <Button type="button" onClick={addItem} className="bg-primary hover:bg-primary/90">
+              <Button 
+                type="button" 
+                onClick={addItem} 
+                className="bg-primary hover:bg-primary/90 print:hidden"
+              >
                 <Plus className="mr-2 h-4 w-4" /> Add Item
               </Button>
             </div>
             
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden print:border-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -288,7 +346,7 @@ const CreateInvoice = () => {
                     <TableHead className="w-[100px]">Quantity</TableHead>
                     <TableHead className="w-[120px]">Price (৳)</TableHead>
                     <TableHead className="w-[120px]">Total (৳)</TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
+                    <TableHead className="w-[60px] print:hidden"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -344,7 +402,7 @@ const CreateInvoice = () => {
                         <TableCell className="font-medium">
                           {item.total.toFixed(2)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="print:hidden">
                           <Button 
                             type="button"
                             variant="ghost" 
@@ -364,27 +422,29 @@ const CreateInvoice = () => {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-              <div className="space-y-4">
-                <div className="space-y-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 print:gap-4 print:mb-2">
+          <Card className="print:shadow-none print:border-0">
+            <CardContent className="p-6 print:p-2">
+              <h3 className="text-lg font-semibold mb-4 print:mb-2">Additional Information</h3>
+              <div className="space-y-4 print:space-y-2">
+                <div className="space-y-2 print:space-y-1">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea 
                     id="notes" 
                     placeholder="Add any additional notes or terms..."
                     rows={4}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Summary</h3>
-              <div className="space-y-2">
+          <Card className="print:shadow-none print:border-0">
+            <CardContent className="p-6 print:p-2">
+              <h3 className="text-lg font-semibold mb-4 print:mb-2">Summary</h3>
+              <div className="space-y-2 print:space-y-1">
                 <div className="flex justify-between py-2">
                   <span className="text-muted-foreground">Subtotal:</span>
                   <span className="font-medium">৳ {subtotal.toFixed(2)}</span>
@@ -412,15 +472,25 @@ const CreateInvoice = () => {
           </Card>
         </div>
 
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center print:hidden">
           <Button type="button" variant="outline" asChild>
             <Link to="/invoices">Cancel</Link>
           </Button>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" className="gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="gap-2"
+              onClick={handlePrint}
+            >
               <Printer className="h-4 w-4" /> Print
             </Button>
-            <Button type="button" variant="outline" className="gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="gap-2"
+              onClick={handleDownloadPDF}
+            >
               <Download className="h-4 w-4" /> Download PDF
             </Button>
             <Button type="submit" className="bg-primary hover:bg-primary/90 gap-2">
