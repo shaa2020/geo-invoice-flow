@@ -8,6 +8,11 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import CreateInvoice from "./pages/CreateInvoice";
+import ViewInvoice from "./pages/ViewInvoice";
+import EditInvoice from "./pages/EditInvoice";
+import Products from "./pages/Products";
+import Customers from "./pages/Customers";
+import Reports from "./pages/Reports";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const queryClient = new QueryClient();
@@ -22,12 +27,11 @@ const App = () => (
           <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/invoices" element={<AppLayout><Invoices /></AppLayout>} />
           <Route path="/invoices/new" element={<AppLayout><CreateInvoice /></AppLayout>} />
-          
-          {/* Placeholders for future pages */}
-          <Route path="/customers" element={<AppLayout><NotFoundPage /></AppLayout>} />
-          <Route path="/products" element={<AppLayout><NotFoundPage /></AppLayout>} />
-          <Route path="/payments" element={<AppLayout><NotFoundPage /></AppLayout>} />
-          <Route path="/reports" element={<AppLayout><NotFoundPage /></AppLayout>} />
+          <Route path="/invoices/view/:id" element={<AppLayout><ViewInvoice /></AppLayout>} />
+          <Route path="/invoices/edit/:id" element={<AppLayout><EditInvoice /></AppLayout>} />
+          <Route path="/products" element={<AppLayout><Products /></AppLayout>} />
+          <Route path="/customers" element={<AppLayout><Customers /></AppLayout>} />
+          <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><NotFoundPage /></AppLayout>} />
           
           {/* 404 route */}

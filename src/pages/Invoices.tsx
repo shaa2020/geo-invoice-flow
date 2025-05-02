@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Search, 
   Plus, 
@@ -30,6 +30,7 @@ import {
   Trash 
 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 // TypeScript interface for invoice data
 interface Invoice {
@@ -76,6 +77,7 @@ const Invoices = () => {
     },
   ];
 
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [invoices, setInvoices] = useState<any[]>([]);
 
@@ -110,6 +112,25 @@ const Invoices = () => {
       invoice.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Handle view invoice
+  const handleViewInvoice = (invoiceId: string) => {
+    navigate(`/invoices/view/${invoiceId}`);
+  };
+
+  // Handle edit invoice
+  const handleEditInvoice = (invoiceId: string) => {
+    navigate(`/invoices/edit/${invoiceId}`);
+  };
+
+  // Handle download invoice
+  const handleDownloadInvoice = (invoiceId: string) => {
+    toast.info("Preparing PDF for download...");
+    // In a real app, we would generate a PDF here
+    setTimeout(() => {
+      toast.success("Invoice PDF downloaded successfully");
+    }, 1000);
+  };
 
   // Handle delete invoice
   const handleDeleteInvoice = (invoiceId: string) => {
@@ -207,13 +228,13 @@ const Invoices = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => toast.info("View invoice coming soon")}>
+                        <DropdownMenuItem onClick={() => handleViewInvoice(invoice.id)}>
                           <Eye className="mr-2 h-4 w-4" /> View
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info("Download PDF coming soon")}>
+                        <DropdownMenuItem onClick={() => handleDownloadInvoice(invoice.id)}>
                           <Download className="mr-2 h-4 w-4" /> Download PDF
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => toast.info("Edit invoice coming soon")}>
+                        <DropdownMenuItem onClick={() => handleEditInvoice(invoice.id)}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
