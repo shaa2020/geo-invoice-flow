@@ -19,21 +19,82 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Search, Plus, MoreHorizontal, Pencil, Trash, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-// Mock data for customers
-const defaultCustomers = [
-  { id: "1", name: "Rahman Clothing", email: "info@rahmanclothing.com", address: "45 Fashion Avenue, Dhaka", phone: "+880 1712 345678", orders: 12, due: 0 },
-  { id: "2", name: "Dhaka Fashion Store", email: "contact@dhakafashion.com", address: "78 Style Street, Dhaka", phone: "+880 1812 567890", orders: 8, due: 4500 },
-  { id: "3", name: "Style Emporium", email: "hello@styleemporium.com", address: "12 Trend Lane, Chittagong", phone: "+880 1912 123456", orders: 5, due: 0 },
-  { id: "4", name: "Modern Apparels", email: "info@modernapparels.com", address: "23 Design Road, Khulna", phone: "+880 1512 987654", orders: 3, due: 1200 },
-  { id: "5", name: "Fashion World", email: "contact@fashionworld.com", address: "56 Garments Street, Dhaka", phone: "+880 1612 456789", orders: 7, due: 0 },
-];
+// Define the customer schema
+const customerSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Customer name is required"),
+  email: z.string().email("Invalid email address"),
+  address: z.string().min(1, "Address is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  orders: z.coerce.number().int().min(0, "Orders must be a positive integer"),
+  due: z.coerce.number().min(0, "Due amount must be a positive number"),
+});
+
+type CustomerFormValues = z.infer<typeof customerSchema>;
+
+// Get customers from localStorage or use default
+const getStoredCustomers = () => {
+  const storedCustomers = localStorage.getItem("customers");
+  if (storedCustomers) {
+    return JSON.parse(storedCustomers);
+  }
+  
+  // Default customers
+  const defaultCustomers = [
+    { id: "1", name: "Rahman Clothing", email: "info@rahmanclothing.com", address: "45 Fashion Avenue, Dhaka", phone: "+880 1712 345678", orders: 12, due: 0 },
+    { id: "2", name: "Dhaka Fashion Store", email: "contact@dhakafashion.com", address: "78 Style Street, Dhaka", phone: "+880 1812 567890", orders: 8, due: 4500 },
+    { id: "3", name: "Style Emporium", email: "hello@styleemporium.com", address: "12 Trend Lane, Chittagong", phone: "+880 1912 123456", orders: 5, due: 0 },
+    { id: "4", name: "Modern Apparels", email: "info@modernapparels.com", address: "23 Design Road, Khulna", phone: "+880 1512 987654", orders: 3, due: 1200 },
+    { id: "5", name: "Fashion World", email: "contact@fashionworld.com", address: "56 Garments Street, Dhaka", phone: "+880 1612 456789", orders: 7, due: 0 },
+  ];
+  
+  // Store default customers in localStorage
+  localStorage.setItem("customers", JSON.stringify(defaultCustomers));
+  return defaultCustomers;
+};
 
 const Customers = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [customers] = useState(defaultCustomers);
+  const [customers, setCustomers] = useState(getStoredCustomers);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<CustomerFormValues | null>(null);
+  const [viewCustomer, setViewCustomer] = useState<CustomerFormValues | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Initialize form
+  const form = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      address: "",
+      phone: "",
+      orders: 0,
+      due: 0,
+    }
+  });
 
   // Filter customers based on search term
   const filteredCustomers = customers.filter(
@@ -44,19 +105,69 @@ const Customers = () => {
   );
 
   const handleDeleteCustomer = (id: string) => {
-    toast.info("Customer deletion functionality will be implemented in a future update");
+    setConfirmDelete(id);
+  };
+
+  const confirmDeleteCustomer = () => {
+    if (confirmDelete) {
+      const updatedCustomers = customers.filter(customer => customer.id !== confirmDelete);
+      setCustomers(updatedCustomers);
+      localStorage.setItem("customers", JSON.stringify(updatedCustomers));
+      toast.success("Customer deleted successfully");
+      setConfirmDelete(null);
+    }
   };
 
   const handleEditCustomer = (id: string) => {
-    toast.info("Customer editing functionality will be implemented in a future update");
+    const customerToEdit = customers.find(customer => customer.id === id);
+    if (customerToEdit) {
+      setEditingCustomer(customerToEdit);
+      form.reset(customerToEdit);
+      setIsDialogOpen(true);
+    }
   };
 
   const handleViewCustomer = (id: string) => {
-    toast.info("Customer details view will be implemented in a future update");
+    const customerToView = customers.find(customer => customer.id === id);
+    if (customerToView) {
+      setViewCustomer(customerToView);
+    }
   };
 
   const handleAddCustomer = () => {
-    toast.info("Add customer functionality will be implemented in a future update");
+    setEditingCustomer(null);
+    form.reset({
+      name: "",
+      email: "",
+      address: "",
+      phone: "",
+      orders: 0,
+      due: 0,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const onSubmit = (data: CustomerFormValues) => {
+    if (editingCustomer) {
+      // Update existing customer
+      const updatedCustomers = customers.map(customer => 
+        customer.id === editingCustomer.id ? { ...data, id: editingCustomer.id } : customer
+      );
+      setCustomers(updatedCustomers);
+      localStorage.setItem("customers", JSON.stringify(updatedCustomers));
+      toast.success("Customer updated successfully");
+    } else {
+      // Add new customer
+      const newCustomer = {
+        ...data,
+        id: Date.now().toString(),
+      };
+      const updatedCustomers = [...customers, newCustomer];
+      setCustomers(updatedCustomers);
+      localStorage.setItem("customers", JSON.stringify(updatedCustomers));
+      toast.success("Customer added successfully");
+    }
+    setIsDialogOpen(false);
   };
 
   return (
@@ -155,6 +266,171 @@ const Customers = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Customer Form Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
+            <DialogDescription>
+              Fill in the customer details below.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter customer name..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter email address..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+880..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter address..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="orders"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Orders</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="due"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Amount</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingCustomer ? "Update Customer" : "Add Customer"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Customer Dialog */}
+      <Dialog open={!!viewCustomer} onOpenChange={() => setViewCustomer(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Customer Details</DialogTitle>
+          </DialogHeader>
+          {viewCustomer && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="font-medium">Name:</div>
+                <div>{viewCustomer.name}</div>
+                <div className="font-medium">Email:</div>
+                <div>{viewCustomer.email}</div>
+                <div className="font-medium">Phone:</div>
+                <div>{viewCustomer.phone}</div>
+                <div className="font-medium">Address:</div>
+                <div>{viewCustomer.address}</div>
+                <div className="font-medium">Total Orders:</div>
+                <div>{viewCustomer.orders}</div>
+                <div className="font-medium">Outstanding Due:</div>
+                <div>
+                  {viewCustomer.due > 0 ? (
+                    <span className="text-red-600">৳{viewCustomer.due.toFixed(2)}</span>
+                  ) : (
+                    <span className="text-green-600">No due</span>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setViewCustomer(null)}>Close</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this customer? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteCustomer}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

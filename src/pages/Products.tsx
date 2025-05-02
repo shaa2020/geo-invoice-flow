@@ -19,21 +19,81 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Search, Plus, MoreHorizontal, Pencil, Trash, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-// Mock data for products
-const defaultProducts = [
-  { id: "1", name: "Premium Cotton T-shirt", sku: "GF-TS-001", category: "T-Shirts", price: 450, stock: 48 },
-  { id: "2", name: "Slim Fit Jeans", sku: "GF-JN-001", category: "Pants", price: 1200, stock: 32 },
-  { id: "3", name: "Oxford Shirt", sku: "GF-SH-001", category: "Shirts", price: 850, stock: 25 },
-  { id: "4", name: "Casual Polo", sku: "GF-PL-001", category: "T-Shirts", price: 650, stock: 40 },
-  { id: "5", name: "Fashionable Hoodie", sku: "GF-HD-001", category: "Outerwear", price: 1500, stock: 18 },
-];
+// Define the product schema
+const productSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Product name is required"),
+  sku: z.string().min(1, "SKU is required"),
+  category: z.string().min(1, "Category is required"),
+  price: z.coerce.number().min(0, "Price must be a positive number"),
+  stock: z.coerce.number().int().min(0, "Stock must be a positive integer"),
+});
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+// Get products from localStorage or use default
+const getStoredProducts = () => {
+  const storedProducts = localStorage.getItem("products");
+  if (storedProducts) {
+    return JSON.parse(storedProducts);
+  }
+  
+  // Default products
+  const defaultProducts = [
+    { id: "1", name: "Premium Cotton T-shirt", sku: "GF-TS-001", category: "T-Shirts", price: 450, stock: 48 },
+    { id: "2", name: "Slim Fit Jeans", sku: "GF-JN-001", category: "Pants", price: 1200, stock: 32 },
+    { id: "3", name: "Oxford Shirt", sku: "GF-SH-001", category: "Shirts", price: 850, stock: 25 },
+    { id: "4", name: "Casual Polo", sku: "GF-PL-001", category: "T-Shirts", price: 650, stock: 40 },
+    { id: "5", name: "Fashionable Hoodie", sku: "GF-HD-001", category: "Outerwear", price: 1500, stock: 18 },
+  ];
+  
+  // Store default products in localStorage
+  localStorage.setItem("products", JSON.stringify(defaultProducts));
+  return defaultProducts;
+};
 
 const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [products] = useState(defaultProducts);
+  const [products, setProducts] = useState(getStoredProducts);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductFormValues | null>(null);
+  const [viewProduct, setViewProduct] = useState<ProductFormValues | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  // Initialize form
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      sku: "",
+      category: "",
+      price: 0,
+      stock: 0,
+    }
+  });
 
   // Filter products based on search term
   const filteredProducts = products.filter(
@@ -44,19 +104,68 @@ const Products = () => {
   );
 
   const handleDeleteProduct = (id: string) => {
-    toast.info("Product deletion functionality will be implemented in a future update");
+    setConfirmDelete(id);
+  };
+
+  const confirmDeleteProduct = () => {
+    if (confirmDelete) {
+      const updatedProducts = products.filter(product => product.id !== confirmDelete);
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+      toast.success("Product deleted successfully");
+      setConfirmDelete(null);
+    }
   };
 
   const handleEditProduct = (id: string) => {
-    toast.info("Product editing functionality will be implemented in a future update");
+    const productToEdit = products.find(product => product.id === id);
+    if (productToEdit) {
+      setEditingProduct(productToEdit);
+      form.reset(productToEdit);
+      setIsDialogOpen(true);
+    }
   };
 
   const handleViewProduct = (id: string) => {
-    toast.info("Product details view will be implemented in a future update");
+    const productToView = products.find(product => product.id === id);
+    if (productToView) {
+      setViewProduct(productToView);
+    }
   };
 
   const handleAddProduct = () => {
-    toast.info("Add product functionality will be implemented in a future update");
+    setEditingProduct(null);
+    form.reset({
+      name: "",
+      sku: "",
+      category: "",
+      price: 0,
+      stock: 0,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const onSubmit = (data: ProductFormValues) => {
+    if (editingProduct) {
+      // Update existing product
+      const updatedProducts = products.map(product => 
+        product.id === editingProduct.id ? { ...data, id: editingProduct.id } : product
+      );
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+      toast.success("Product updated successfully");
+    } else {
+      // Add new product
+      const newProduct = {
+        ...data,
+        id: Date.now().toString(),
+      };
+      const updatedProducts = [...products, newProduct];
+      setProducts(updatedProducts);
+      localStorage.setItem("products", JSON.stringify(updatedProducts));
+      toast.success("Product added successfully");
+    }
+    setIsDialogOpen(false);
   };
 
   return (
@@ -148,6 +257,149 @@ const Products = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Product Form Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+            <DialogDescription>
+              Fill in the product details below.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter product name..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter product SKU..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter category..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stock Quantity</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="0" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  {editingProduct ? "Update Product" : "Add Product"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Product Dialog */}
+      <Dialog open={!!viewProduct} onOpenChange={() => setViewProduct(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Product Details</DialogTitle>
+          </DialogHeader>
+          {viewProduct && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="font-medium">Name:</div>
+                <div>{viewProduct.name}</div>
+                <div className="font-medium">SKU:</div>
+                <div>{viewProduct.sku}</div>
+                <div className="font-medium">Category:</div>
+                <div>{viewProduct.category}</div>
+                <div className="font-medium">Price:</div>
+                <div>৳{viewProduct.price.toFixed(2)}</div>
+                <div className="font-medium">Stock:</div>
+                <div>{viewProduct.stock}</div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setViewProduct(null)}>Close</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteProduct}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
