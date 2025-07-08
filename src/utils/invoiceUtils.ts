@@ -1,3 +1,4 @@
+
 import { format } from "date-fns";
 
 export interface InvoiceItem {
@@ -32,8 +33,11 @@ export interface Invoice {
 }
 
 export const formatCurrency = (amount: number): string => {
-  // Ensure proper number formatting for Bengali currency
-  const formattedAmount = amount.toFixed(2);
+  // Use proper number formatting for Bangladesh locale
+  const formattedAmount = amount.toLocaleString('en-BD', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
   return `৳${formattedAmount}`;
 };
 
