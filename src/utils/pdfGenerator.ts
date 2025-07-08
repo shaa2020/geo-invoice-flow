@@ -1,175 +1,188 @@
 
 import jsPDF from 'jspdf';
-import { Invoice, formatCurrency, formatDate } from './invoiceUtils';
+import { Invoice, formatDate } from './invoiceUtils';
+
+// Custom currency formatter for Bengali Taka
+const formatCurrency = (amount: number): string => {
+  const formattedAmount = amount.toFixed(2);
+  return `৳ ${formattedAmount}`;
+};
 
 export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
-  // Set default font to ensure proper character rendering
+  // Set font to support Unicode characters
   doc.setFont('helvetica');
   
-  // Colors and styling
-  const primaryColor = '#2563eb';
-  const grayColor = '#6b7280';
-  const darkGrayColor = '#374151';
+  // Colors
+  const primaryColor = [37, 99, 235]; // Blue
+  const grayColor = [107, 114, 128];
+  const darkGrayColor = [55, 65, 81];
+  const lightGrayColor = [248, 250, 252];
   
-  // Header section
-  doc.setFillColor(37, 99, 235); // Primary blue
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  // Header with company branding
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, pageWidth, 35, 'F');
   
-  // Company logo/name
+  // Company name
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
+  doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text('Geo Fashion', 20, 25);
+  doc.text('Geo Fashion', 15, 20);
   
   // Invoice title
-  doc.setFontSize(18);
-  doc.text('INVOICE', pageWidth - 20, 25, { align: 'right' });
+  doc.setFontSize(16);
+  doc.text('INVOICE', pageWidth - 15, 20, { align: 'right' });
   
-  // Company details
-  doc.setTextColor(107, 114, 128);
-  doc.setFontSize(10);
+  // Reset text color for body content
+  doc.setTextColor(...darkGrayColor);
+  
+  // Company contact information
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('123 Fashion Street, Dhaka, Bangladesh', 20, 50);
-  doc.text('+880 1234 567890', 20, 57);
-  doc.text('info@geofashion.com', 20, 64);
+  doc.text('123 Fashion Street, Dhaka, Bangladesh', 15, 45);
+  doc.text('Phone: +880 1234 567890', 15, 51);
+  doc.text('Email: info@geofashion.com', 15, 57);
   
-  // Invoice details (right side)
-  doc.setTextColor(55, 65, 81);
+  // Invoice details (right aligned)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Invoice Number:', pageWidth - 75, 45);
+  doc.text('Invoice Date:', pageWidth - 75, 51);
+  doc.text('Due Date:', pageWidth - 75, 57);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text(invoice.invoiceNumber, pageWidth - 15, 45, { align: 'right' });
+  doc.text(formatDate(invoice.invoiceDate), pageWidth - 15, 51, { align: 'right' });
+  doc.text(formatDate(invoice.dueDate), pageWidth - 15, 57, { align: 'right' });
+  
+  // Customer information section
+  doc.setFillColor(...lightGrayColor);
+  doc.rect(15, 70, pageWidth - 30, 35, 'F');
+  
+  doc.setTextColor(...darkGrayColor);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Invoice Number:', pageWidth - 80, 50);
-  doc.text('Invoice Date:', pageWidth - 80, 57);
-  doc.text('Due Date:', pageWidth - 80, 64);
+  doc.text('Bill To:', 20, 82);
+  
+  doc.setFontSize(11);
+  doc.text(invoice.customer.name, 20, 90);
   
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.invoiceNumber, pageWidth - 20, 50, { align: 'right' });
-  doc.text(formatDate(invoice.invoiceDate), pageWidth - 20, 57, { align: 'right' });
-  doc.text(formatDate(invoice.dueDate), pageWidth - 20, 64, { align: 'right' });
+  doc.setFontSize(9);
+  doc.text(invoice.customer.address, 20, 96);
+  doc.text(`${invoice.customer.phone} | ${invoice.customer.email}`, 20, 102);
   
-  // Customer section
-  doc.setFillColor(248, 250, 252);
-  doc.rect(20, 80, pageWidth - 40, 40, 'F');
+  // Items table
+  let currentY = 120;
   
-  doc.setTextColor(55, 65, 81);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Bill To:', 25, 95);
-  
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text(invoice.customer.name, 25, 105);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(invoice.customer.address, 25, 112);
-  doc.text(invoice.customer.phone + ' | ' + invoice.customer.email, 25, 119);
-  
-  // Items table header
-  let yPosition = 140;
-  doc.setFillColor(37, 99, 235);
-  doc.rect(20, yPosition, pageWidth - 40, 12, 'F');
+  // Table header
+  doc.setFillColor(...primaryColor);
+  doc.rect(15, currentY, pageWidth - 30, 10, 'F');
   
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Item', 25, yPosition + 8);
-  doc.text('Description', 70, yPosition + 8);
-  doc.text('Qty', 120, yPosition + 8, { align: 'center' });
-  doc.text('Price', 140, yPosition + 8, { align: 'right' });
-  doc.text('Total', pageWidth - 25, yPosition + 8, { align: 'right' });
+  doc.text('Item', 20, currentY + 7);
+  doc.text('Description', 65, currentY + 7);
+  doc.text('Qty', 115, currentY + 7, { align: 'center' });
+  doc.text('Price', 135, currentY + 7, { align: 'right' });
+  doc.text('Total', pageWidth - 20, currentY + 7, { align: 'right' });
   
-  // Items table body
-  yPosition += 12;
-  doc.setTextColor(55, 65, 81);
+  currentY += 10;
+  
+  // Table rows
+  doc.setTextColor(...darkGrayColor);
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
   
   invoice.items.forEach((item, index) => {
-    if (yPosition > pageHeight - 60) {
+    if (currentY > pageHeight - 50) {
       doc.addPage();
-      yPosition = 20;
+      currentY = 20;
     }
     
-    const rowHeight = 15;
+    const rowHeight = 12;
     
     // Alternating row colors
     if (index % 2 === 0) {
       doc.setFillColor(249, 250, 251);
-      doc.rect(20, yPosition, pageWidth - 40, rowHeight, 'F');
+      doc.rect(15, currentY, pageWidth - 30, rowHeight, 'F');
     }
     
-    doc.text(item.product, 25, yPosition + 10);
-    doc.text(item.description, 70, yPosition + 10);
-    doc.text(item.quantity.toString(), 120, yPosition + 10, { align: 'center' });
-    doc.text(formatCurrency(item.price), 140, yPosition + 10, { align: 'right' });
-    doc.text(formatCurrency(item.total), pageWidth - 25, yPosition + 10, { align: 'right' });
+    // Item details
+    doc.text(item.product, 20, currentY + 8);
+    doc.text(item.description, 65, currentY + 8);
+    doc.text(item.quantity.toString(), 115, currentY + 8, { align: 'center' });
+    doc.text(formatCurrency(item.price), 135, currentY + 8, { align: 'right' });
+    doc.text(formatCurrency(item.total), pageWidth - 20, currentY + 8, { align: 'right' });
     
-    yPosition += rowHeight;
+    currentY += rowHeight;
   });
   
   // Summary section
-  yPosition += 10;
-  const summaryStartY = yPosition;
+  currentY += 15;
+  const summaryWidth = 70;
+  const summaryX = pageWidth - summaryWidth - 15;
   
   // Summary background
-  doc.setFillColor(248, 250, 252);
-  doc.rect(pageWidth - 80, summaryStartY, 60, 50, 'F');
+  doc.setFillColor(...lightGrayColor);
+  doc.rect(summaryX, currentY, summaryWidth, 40, 'F');
   
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   
   // Subtotal
-  doc.text('Subtotal:', pageWidth - 75, summaryStartY + 12);
-  doc.text(formatCurrency(invoice.subtotal), pageWidth - 25, summaryStartY + 12, { align: 'right' });
+  doc.text('Subtotal:', summaryX + 5, currentY + 10);
+  doc.text(formatCurrency(invoice.subtotal), summaryX + summaryWidth - 5, currentY + 10, { align: 'right' });
   
   // Delivery charge
-  doc.text('Delivery Charge:', pageWidth - 75, summaryStartY + 22);
-  doc.text(formatCurrency(invoice.deliveryCharge), pageWidth - 25, summaryStartY + 22, { align: 'right' });
+  doc.text('Delivery Charge:', summaryX + 5, currentY + 18);
+  doc.text(formatCurrency(invoice.deliveryCharge), summaryX + summaryWidth - 5, currentY + 18, { align: 'right' });
   
-  // Total line
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(107, 114, 128);
-  doc.line(pageWidth - 75, summaryStartY + 28, pageWidth - 25, summaryStartY + 28);
+  // Separator line
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(...grayColor);
+  doc.line(summaryX + 5, currentY + 24, summaryX + summaryWidth - 5, currentY + 24);
   
   // Grand total
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('Total:', pageWidth - 75, summaryStartY + 38);
-  doc.text(formatCurrency(invoice.grandTotal), pageWidth - 25, summaryStartY + 38, { align: 'right' });
+  doc.setFontSize(11);
+  doc.text('Total:', summaryX + 5, currentY + 32);
+  doc.text(formatCurrency(invoice.grandTotal), summaryX + summaryWidth - 5, currentY + 32, { align: 'right' });
   
   // Payment information
-  yPosition = summaryStartY + 55;
-  doc.setFontSize(10);
+  currentY += 50;
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Payment Status:', 25, yPosition);
-  doc.text('Payment Method:', 25, yPosition + 8);
+  doc.text('Payment Status:', 20, currentY);
+  doc.text('Payment Method:', 20, currentY + 6);
   
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.status, 70, yPosition);
-  doc.text(invoice.paymentMethod, 70, yPosition + 8);
+  doc.text(invoice.status, 65, currentY);
+  doc.text(invoice.paymentMethod, 65, currentY + 6);
   
   // Notes section
-  if (invoice.notes) {
-    yPosition += 25;
+  if (invoice.notes && invoice.notes.trim()) {
+    currentY += 20;
     doc.setFont('helvetica', 'bold');
-    doc.text('Notes:', 25, yPosition);
+    doc.text('Notes:', 20, currentY);
     
     doc.setFont('helvetica', 'normal');
-    const maxWidth = pageWidth - 50;
+    const maxWidth = pageWidth - 40;
     const splitNotes = doc.splitTextToSize(invoice.notes, maxWidth);
-    doc.text(splitNotes, 25, yPosition + 8);
+    doc.text(splitNotes, 20, currentY + 6);
   }
   
   // Footer
   doc.setFontSize(8);
-  doc.setTextColor(107, 114, 128);
+  doc.setTextColor(...grayColor);
   doc.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
-  doc.text('If you have any questions about this invoice, please contact us.', pageWidth / 2, pageHeight - 15, { align: 'center' });
+  doc.text('For any questions about this invoice, please contact us.', pageWidth / 2, pageHeight - 15, { align: 'center' });
   
-  // Save the PDF with proper filename
+  // Generate filename and save
   const filename = `Invoice-${invoice.invoiceNumber}.pdf`;
   doc.save(filename);
 };
