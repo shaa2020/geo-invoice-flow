@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 
 export interface InvoiceItem {
@@ -461,43 +460,12 @@ export const generateInvoiceHTML = (invoice: Invoice): string => {
 
 export const downloadInvoiceAsPDF = async (invoice: Invoice): Promise<void> => {
   try {
-    const htmlContent = generateInvoiceHTML(invoice);
-    
-    // Create a blob with the HTML content
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    
-    // Create a temporary link element for download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Invoice-${invoice.invoiceNumber}.html`;
-    link.style.display = 'none';
-    
-    // Append to body, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up the URL object
-    URL.revokeObjectURL(url);
-    
-    // Also offer print option in a new window for PDF saving
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      
-      // Add event listener for when content loads
-      printWindow.onload = () => {
-        // Small delay to ensure everything is rendered
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
-      };
-    }
+    // Import and use the professional PDF generator
+    const { generateProfessionalInvoicePDF } = await import('./pdfGenerator');
+    generateProfessionalInvoicePDF(invoice);
   } catch (error) {
-    console.error('Error generating invoice download:', error);
-    throw new Error('Failed to generate invoice download');
+    console.error('Error generating PDF:', error);
+    throw new Error('Failed to generate PDF');
   }
 };
 
