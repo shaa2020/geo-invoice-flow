@@ -6,38 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { format } from "date-fns";
-
-interface InvoiceItem {
-  id: string;
-  product: string;
-  description: string;
-  quantity: number;
-  price: number;
-  total: number;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  address: string;
-  phone: string;
-}
-
-interface Invoice {
-  invoiceNumber: string;
-  invoiceDate: string;
-  dueDate: string;
-  customer: Customer;
-  items: InvoiceItem[];
-  paymentMethod: string;
-  subtotal: number;
-  deliveryCharge: number;
-  grandTotal: number;
-  notes: string;
-  status: string;
-}
+import { 
+  Invoice, 
+  formatDate, 
+  formatCurrency, 
+  downloadInvoiceAsPDF,
+  getPaymentMethodDisplay 
+} from "@/utils/invoiceUtils";
 
 const ViewInvoice = () => {
   const { id } = useParams();
@@ -65,17 +40,28 @@ const ViewInvoice = () => {
   }, [id, navigate]);
 
   const handlePrint = () => {
+    if (!invoice) return;
+    
     toast.info("Preparing to print invoice...");
-    window.print();
+    
+    // Use the browser's print functionality
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   const handleDownload = () => {
+    if (!invoice) return;
+    
     toast.info("Preparing PDF for download...");
-    // In a real app, we would generate a PDF here
-    // For now, we'll just show a success message
-    setTimeout(() => {
-      toast.success("Invoice PDF downloaded successfully");
-    }, 1000);
+    
+    try {
+      downloadInvoiceAsPDF(invoice);
+      toast.success("Invoice opened in new window for printing/saving as PDF");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Error generating PDF. Please try again.");
+    }
   };
 
   if (loading) {
@@ -85,15 +71,6 @@ const ViewInvoice = () => {
   if (!invoice) {
     return <div className="flex justify-center items-center h-96">Invoice not found</div>;
   }
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), "MMM d, yyyy");
-    } catch (e) {
-      return dateString;
-    }
-  };
 
   return (
     <div className="animate-fade-in print:m-0 print:p-0">
@@ -182,8 +159,8 @@ const ViewInvoice = () => {
                     <td className="p-4">{item.product}</td>
                     <td className="p-4">{item.description}</td>
                     <td className="p-4 text-right">{item.quantity}</td>
-                    <td className="p-4 text-right">৳{item.price.toFixed(2)}</td>
-                    <td className="p-4 text-right">৳{item.total.toFixed(2)}</td>
+                    <td className="p-4 text-right">{formatCurrency(item.price)}</td>
+                    <td className="p-4 text-right">{formatCurrency(item.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -196,16 +173,16 @@ const ViewInvoice = () => {
           <div className="w-full max-w-xs space-y-2">
             <div className="flex justify-between py-2">
               <span className="text-gray-600">Subtotal:</span>
-              <span>৳{invoice.subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(invoice.subtotal)}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-gray-600">Delivery Charge:</span>
-              <span>৳{invoice.deliveryCharge.toFixed(2)}</span>
+              <span>{formatCurrency(invoice.deliveryCharge)}</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between py-2 text-lg font-bold">
               <span>Total:</span>
-              <span>৳{invoice.grandTotal.toFixed(2)}</span>
+              <span>{formatCurrency(invoice.grandTotal)}</span>
             </div>
             <div className="mt-2 p-2 rounded bg-muted/50">
               <span className="text-sm font-medium">Payment Status: </span>
@@ -223,7 +200,7 @@ const ViewInvoice = () => {
             </div>
             <div className="mt-2">
               <span className="text-sm font-medium">Payment Method: </span>
-              <span className="text-sm capitalize">{invoice.paymentMethod}</span>
+              <span className="text-sm">{getPaymentMethodDisplay(invoice.paymentMethod)}</span>
             </div>
           </div>
         </div>

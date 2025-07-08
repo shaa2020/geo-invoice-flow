@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,8 +94,17 @@ const Invoices = () => {
       date: format(new Date(invoice.invoiceDate), 'MMM d, yyyy'),
     }));
     
-    // Combine default invoices with stored ones
-    setInvoices([...formattedStoredInvoices, ...defaultInvoices]);
+    // Combine default invoices with stored ones (remove duplicates)
+    const allInvoices = [...formattedStoredInvoices];
+    
+    // Add default invoices only if they don't exist
+    defaultInvoices.forEach(defaultInv => {
+      if (!allInvoices.find(inv => inv.id === defaultInv.id)) {
+        allInvoices.push(defaultInv);
+      }
+    });
+    
+    setInvoices(allInvoices);
   }, []);
 
   // Function to format date (simple version since we don't have the full date-fns)
@@ -123,13 +131,28 @@ const Invoices = () => {
     navigate(`/invoices/edit/${invoiceId}`);
   };
 
-  // Handle download invoice
+  // Handle download invoice - Enhanced
   const handleDownloadInvoice = (invoiceId: string) => {
     toast.info("Preparing PDF for download...");
-    // In a real app, we would generate a PDF here
-    setTimeout(() => {
-      toast.success("Invoice PDF downloaded successfully");
-    }, 1000);
+    
+    // Get the full invoice data
+    const storedInvoices = JSON.parse(localStorage.getItem('invoices') || '[]');
+    const fullInvoice = storedInvoices.find((inv: any) => inv.invoiceNumber === invoiceId);
+    
+    if (fullInvoice) {
+      try {
+        // Import and use the download utility
+        import('@/utils/invoiceUtils').then(({ downloadInvoiceAsPDF }) => {
+          downloadInvoiceAsPDF(fullInvoice);
+          toast.success("Invoice opened in new window for printing/saving as PDF");
+        });
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast.error("Error generating PDF. Please try the view page instead.");
+      }
+    } else {
+      toast.error("Invoice data not found. Please try from the view page.");
+    }
   };
 
   // Handle delete invoice
