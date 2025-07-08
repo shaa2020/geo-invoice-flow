@@ -32,7 +32,9 @@ export interface Invoice {
 }
 
 export const formatCurrency = (amount: number): string => {
-  return `৳${amount.toFixed(2)}`;
+  // Ensure proper number formatting for Bengali currency
+  const formattedAmount = amount.toFixed(2);
+  return `৳${formattedAmount}`;
 };
 
 export const formatDate = (dateString: string): string => {

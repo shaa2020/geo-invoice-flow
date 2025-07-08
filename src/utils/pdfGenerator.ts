@@ -7,6 +7,9 @@ export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
+  // Set default font to ensure proper character rendering
+  doc.setFont('helvetica');
+  
   // Colors and styling
   const primaryColor = '#2563eb';
   const grayColor = '#6b7280';
@@ -38,14 +41,14 @@ export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
   doc.setTextColor(55, 65, 81);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('Invoice Number:', pageWidth - 20, 50, { align: 'right' });
-  doc.text('Invoice Date:', pageWidth - 20, 57, { align: 'right' });
-  doc.text('Due Date:', pageWidth - 20, 64, { align: 'right' });
+  doc.text('Invoice Number:', pageWidth - 80, 50);
+  doc.text('Invoice Date:', pageWidth - 80, 57);
+  doc.text('Due Date:', pageWidth - 80, 64);
   
   doc.setFont('helvetica', 'normal');
-  doc.text(invoice.invoiceNumber, pageWidth - 22, 50, { align: 'right' });
-  doc.text(formatDate(invoice.invoiceDate), pageWidth - 22, 57, { align: 'right' });
-  doc.text(formatDate(invoice.dueDate), pageWidth - 22, 64, { align: 'right' });
+  doc.text(invoice.invoiceNumber, pageWidth - 20, 50, { align: 'right' });
+  doc.text(formatDate(invoice.invoiceDate), pageWidth - 20, 57, { align: 'right' });
+  doc.text(formatDate(invoice.dueDate), pageWidth - 20, 64, { align: 'right' });
   
   // Customer section
   doc.setFillColor(248, 250, 252);
@@ -63,7 +66,7 @@ export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.text(invoice.customer.address, 25, 112);
-  doc.text(`${invoice.customer.phone} | ${invoice.customer.email}`, 25, 119);
+  doc.text(invoice.customer.phone + ' | ' + invoice.customer.email, 25, 119);
   
   // Items table header
   let yPosition = 140;
@@ -155,7 +158,8 @@ export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
     doc.text('Notes:', 25, yPosition);
     
     doc.setFont('helvetica', 'normal');
-    const splitNotes = doc.splitTextToSize(invoice.notes, pageWidth - 50);
+    const maxWidth = pageWidth - 50;
+    const splitNotes = doc.splitTextToSize(invoice.notes, maxWidth);
     doc.text(splitNotes, 25, yPosition + 8);
   }
   
@@ -165,6 +169,7 @@ export const generateProfessionalInvoicePDF = (invoice: Invoice): void => {
   doc.text('Thank you for your business!', pageWidth / 2, pageHeight - 20, { align: 'center' });
   doc.text('If you have any questions about this invoice, please contact us.', pageWidth / 2, pageHeight - 15, { align: 'center' });
   
-  // Save the PDF
-  doc.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+  // Save the PDF with proper filename
+  const filename = `Invoice-${invoice.invoiceNumber}.pdf`;
+  doc.save(filename);
 };
